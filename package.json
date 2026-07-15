@@ -1,0 +1,14 @@
+{
+  "name": "finlit-monorepo",
+  "version": "1.0.0",
+  "description": "Financial Literacy App - Frontend and Backend merged",
+  "scripts": {
+    "install:all": "npm install --prefix frontend",
+    "start:frontend": "npm start --prefix frontend",
+    "start:backend": "cd backend && ./mvnw spring-boot:run",
+    "start": "concurrently \"npm run start:frontend\" \"npm run start:backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

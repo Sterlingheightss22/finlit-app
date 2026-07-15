@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: FinLit
+    runtime: docker
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
