@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiService, Module, Lesson } from '../services/api';
 import { useProgress } from '../contexts/ProgressContext';
@@ -7,8 +7,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { useAuth } from '../contexts/AuthContext';
+
 type NavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
-// Fallback modules matching DataLoader json formats for premium demo resilience
+
 const FALLBACK_MODULES: Module[] = [
   {
     id: 1,
@@ -84,8 +86,10 @@ const FALLBACK_MODULES: Module[] = [
     ]
   }
 ];
+
 export default function ModulesScreen() {
   const { completedLessons } = useProgress();
+  const { isPremium } = useAuth();
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const [modules, setModules] = useState<Module[]>([]);
@@ -156,6 +160,9 @@ export default function ModulesScreen() {
   }, []);
   // Helper to determine if a lesson is unlocked
   const isLessonUnlocked = (lessonId: number, moduleIndex: number, lessonIndex: number) => {
+    // Module 2 and beyond require premium subscription
+    if (moduleIndex > 0 && !isPremium) return false;
+
     // First lesson of first module is always unlocked
     if (moduleIndex === 0 && lessonIndex === 0) return true;
     // Check if the lesson is already completed
@@ -175,7 +182,15 @@ export default function ModulesScreen() {
     }
     return false;
   };
-  const handleLessonClick = (lesson: Lesson, unlocked: boolean) => {
+  const handleLessonClick = (lesson: Lesson, unlocked: boolean, isPremiumLocked: boolean) => {
+    if (isPremiumLocked) {
+      Alert.alert(
+        'Premium Required 🌟',
+        'Module 2 and beyond require a premium subscription.\n\nGo to Settings to upgrade your account and unlock all roadmap modules.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     if (unlocked) {
       navigation.navigate('Lesson', { lessonId: lesson.id, lessonTitle: lesson.title });
     }
@@ -215,6 +230,7 @@ export default function ModulesScreen() {
               <View style={styles.timelineList}>
                 {moduleLessons.map((lesson, lesIdx) => {
                   const completed = completedLessons.includes(lesson.id);
+                  const isPremiumLocked = modIdx > 0 && !isPremium;
                   const unlocked = isLessonUnlocked(lesson.id, modIdx, lesIdx);
                   return (
                     <TouchableOpacity
@@ -224,7 +240,7 @@ export default function ModulesScreen() {
                         { backgroundColor: colors.surface, borderColor: colors.border },
                         !unlocked ? { opacity: 0.6 } : null,
                       ]}
-                      onPress={() => handleLessonClick(lesson, unlocked)}
+                      onPress={() => handleLessonClick(lesson, unlocked, isPremiumLocked)}
                       activeOpacity={unlocked ? 0.7 : 1}
                     >
                       <View style={[

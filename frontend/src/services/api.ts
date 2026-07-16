@@ -44,6 +44,14 @@ export interface UserProgress {
   completionDate?: string;
 }
 
+export interface Subscription {
+  id: number;
+  status: 'FREE' | 'PREMIUM' | 'EXPIRED';
+  paystackReference?: string;
+  startDate?: string;
+  expiryDate?: string;
+}
+
 export const apiService = {
   // Users endpoints
   createUser: async (username: string, email: string): Promise<User> => {
@@ -98,6 +106,22 @@ export const apiService = {
       // Fallback if the endpoint is /progress or has different structure
       const response = await apiClient.get<UserProgress[]>('/progress');
       return response.data.filter(p => p.username === username);
+    }
+  },
+
+  // Subscription endpoints
+  initializeSubscription: async (userId: number): Promise<{ authorization_url: string; reference: string }> => {
+    const response = await apiClient.post<{ authorization_url: string; reference: string }>(`/subscription/initialize/${userId}`);
+    return response.data;
+  },
+
+  getSubscription: async (userId: number): Promise<Subscription | null> => {
+    try {
+      const response = await apiClient.get<Subscription>(`/subscription/status/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.warn('Failed to load subscription status from backend', error);
+      return null;
     }
   },
 };

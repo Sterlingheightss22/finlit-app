@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/modules").permitAll()
                 .requestMatchers("/api/modules/**").permitAll()
                 .requestMatchers("/api/simulations/**").permitAll()
-                .requestMatchers("/api/subscription/webhook").permitAll()
+                .requestMatchers("/api/subscription/**").permitAll()
                 .requestMatchers("/api/users/**").permitAll()
                 .requestMatchers("/api/progress/**").permitAll()
                 // Everything else requires a valid Firebase token

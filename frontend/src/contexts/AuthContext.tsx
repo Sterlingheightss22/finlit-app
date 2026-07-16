@@ -1,13 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService, User } from '../services/api';
+import { Linking } from 'react-native';
 
 interface AuthContextType {
   currentUser: User | null;
   isLoading: boolean;
+  isPremium: boolean;
   login: (email: string, username: string) => Promise<void>;
   signup: (email: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
+  checkPremiumStatus: () => Promise<void>;
+  subscribe: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,6 +21,50 @@ const USER_SESSION_KEY = '@finlit_user_session';
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isPremium, setIsPremium] = useState<boolean>(false);
+
+  const checkPremiumStatus = async () => {
+    if (!currentUser || !currentUser.id) {
+      setIsPremium(false);
+      return;
+    }
+    try {
+      const sub = await apiService.getSubscription(currentUser.id);
+      if (sub && sub.status === 'PREMIUM') {
+        setIsPremium(true);
+      } else {
+        setIsPremium(false);
+      }
+    } catch (error) {
+      console.warn('Failed to check premium status', error);
+      setIsPremium(false);
+    }
+  };
+
+  const subscribe = async (): Promise<string | null> => {
+    if (!currentUser || !currentUser.id) {
+      throw new Error('User must be logged in to subscribe.');
+    }
+    try {
+      const result = await apiService.initializeSubscription(currentUser.id);
+      if (result && result.authorization_url) {
+        await Linking.openURL(result.authorization_url);
+        return result.authorization_url;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to initialize subscription', error);
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      checkPremiumStatus();
+    } else {
+      setIsPremium(false);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     const loadUserSession = async () => {
@@ -104,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ currentUser, isLoading, login, signup, logout, isPremium, checkPremiumStatus, subscribe }}>
       {children}
     </AuthContext.Provider>
   );

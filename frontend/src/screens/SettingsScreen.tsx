@@ -1,17 +1,41 @@
 import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Switch } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Switch, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useProgress } from '../contexts/ProgressContext';
 import { useTheme } from '../contexts/ThemeContext';
 
 export default function SettingsScreen() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, isPremium, subscribe, checkPremiumStatus } = useAuth();
   const { xp, level } = useProgress();
   const { colors, isDark, toggleTheme } = useTheme();
 
   const [soundEnabled, setSoundEnabled] = React.useState(true);
   const [remindersEnabled, setRemindersEnabled] = React.useState(true);
+  const [checkingStatus, setCheckingStatus] = React.useState(false);
+  const [subscribing, setSubscribing] = React.useState(false);
+
+  const handleUpgrade = async () => {
+    setSubscribing(true);
+    try {
+      await subscribe();
+    } catch (e: any) {
+      alert('Subscription failed: ' + e.message);
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setCheckingStatus(true);
+    try {
+      await checkPremiumStatus();
+    } catch (e: any) {
+      alert('Failed to refresh status');
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -32,6 +56,72 @@ export default function SettingsScreen() {
               <Text style={[styles.levelText, { color: colors.xpBadgeText }]}>Lvl {level} • {xp} XP</Text>
             </View>
           </View>
+        </View>
+
+        {/* Subscription Section */}
+        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Subscription</Text>
+        <View style={[styles.subscriptionCard, { backgroundColor: colors.surface, borderColor: isPremium ? '#00e676' : colors.border }]}>
+          <View style={styles.subHeader}>
+            <Text style={styles.subEmoji}>{isPremium ? '🌟' : '🪙'}</Text>
+            <View style={styles.subTitleCol}>
+              <Text style={[styles.subTitleText, { color: colors.text }]}>
+                {isPremium ? 'Premium Account' : 'Free Account'}
+              </Text>
+              <Text style={[styles.subDescText, { color: colors.textSecondary }]}>
+                {isPremium 
+                  ? 'All learning modules & features are fully unlocked!' 
+                  : 'Upgrade for GHS 20/month to unlock all roadmap modules.'}
+              </Text>
+            </View>
+          </View>
+          
+          {!isPremium ? (
+            <View style={styles.subActions}>
+              <TouchableOpacity 
+                style={[styles.subUpgradeBtn, { backgroundColor: colors.accent }]} 
+                onPress={handleUpgrade}
+                disabled={subscribing}
+                activeOpacity={0.8}
+              >
+                {subscribing ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.subUpgradeBtnText}>Upgrade to Premium</Text>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.subCheckBtn} 
+                onPress={handleRefresh}
+                disabled={checkingStatus}
+                activeOpacity={0.7}
+              >
+                {checkingStatus ? (
+                  <ActivityIndicator color={colors.accent} size="small" />
+                ) : (
+                  <Text style={[styles.subCheckBtnText, { color: colors.accent }]}>Already paid? Refresh Status</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.subActions}>
+              <View style={[styles.premiumBadge, { backgroundColor: 'rgba(0, 230, 118, 0.1)', borderColor: 'rgba(0, 230, 118, 0.2)' }]}>
+                <Text style={styles.premiumBadgeText}>✓ Active Subscription</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.subCheckBtn} 
+                onPress={handleRefresh}
+                disabled={checkingStatus}
+                activeOpacity={0.7}
+              >
+                {checkingStatus ? (
+                  <ActivityIndicator color={colors.accent} size="small" />
+                ) : (
+                  <Text style={[styles.subCheckBtnText, { color: colors.textSecondary }]}>Verify status</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Appearance Section */}
@@ -156,4 +246,52 @@ const styles = StyleSheet.create({
     borderRadius: 16, alignItems: 'center', justifyContent: 'center',
   },
   logoutButtonText: { fontSize: 15, fontWeight: '700' },
+  subscriptionCard: {
+    borderRadius: 24, padding: 20,
+    borderWidth: 1.5, marginBottom: 32,
+  },
+  subHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    marginBottom: 16,
+  },
+  subEmoji: {
+    fontSize: 28, marginRight: 16,
+  },
+  subTitleCol: {
+    flex: 1,
+  },
+  subTitleText: {
+    fontSize: 16, fontWeight: '800',
+    marginBottom: 2,
+  },
+  subDescText: {
+    fontSize: 13, lineHeight: 18,
+    fontWeight: '500',
+  },
+  subActions: {
+    marginTop: 8,
+  },
+  subUpgradeBtn: {
+    height: 48, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 12,
+  },
+  subUpgradeBtnText: {
+    color: '#FFFFFF', fontSize: 15, fontWeight: '700',
+  },
+  subCheckBtn: {
+    alignItems: 'center', padding: 8,
+  },
+  subCheckBtnText: {
+    fontSize: 13, fontWeight: '700',
+  },
+  premiumBadge: {
+    borderRadius: 12, borderWidth: 1,
+    paddingVertical: 10, paddingHorizontal: 16,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 8,
+  },
+  premiumBadgeText: {
+    color: '#00e676', fontSize: 13, fontWeight: '800',
+  },
 });
